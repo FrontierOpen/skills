@@ -2,64 +2,101 @@
 
 Reusable, production-oriented Codex Skills maintained by Frontier World in the [FrontierOpen](https://github.com/FrontierOpen) GitHub organization.
 
-This repository contains reusable Codex Skills maintained by Frontier World. It currently includes `frontier-signals`, an editorial workflow for Frontier World’s AI news column, and `xhs-cover-generator`, a local renderer for Xiaohongshu covers and multi-page 图文 decks.
+This repository covers the content operations loop: sourcing and research, production, publication, and performance evaluation, plus a standalone Xiaohongshu cover renderer.
 
 ## Available skills
 
 | Skill | Description | Status |
 | --- | --- | --- |
-| [`frontier-signals`](./frontier-signals/) | Researches, writes, illustrates, validates, and prepares sourced Chinese WeChat articles about AI models, agents, companies, founders, research, and policy. | Active |
+| [`expert-wx-mp`](./expert-wx-mp/) | WeChat Official Account operations expert: positioning, style DNA, content production, layout, publishing, and data review, with nested tools for profiling, theming, publishing, and engagement scraping. | Active |
+| [`wx-mp-hunter`](./wx-mp-hunter/) | Collects WeChat Official Account content: full article text by URL, recent post lists per account, and article links from topic or album pages. | Active |
+| [`published-track`](./published-track/) | SQLite-backed publication ledger across platforms, recording published works, DNA attribution, and engagement metrics. | Active |
+| [`content-calibrator`](./content-calibrator/) | DNA performance evaluation engine: consumes `published-track` data, normalizes against per-account baselines, and produces trend-first evaluation reports and DNA revision proposals. | Active |
 | [`xhs-cover-generator`](./xhs-cover-generator/) | Renders text-driven 1080×1440 Xiaohongshu covers and multi-page 图文 decks with built-in layouts, palettes, and JSON customization. | Active |
 
-## Frontier Signals
-
-`frontier-signals` provides an end-to-end editorial workflow:
-
-- discover and evaluate current AI news;
-- build a source and claim ledger before drafting;
-- write bulletin, report, or profile articles in the Frontier Signals brand-account voice;
-- keep full research notes separate from concise reader-facing copy;
-- manage image provenance, rights, purpose, and accessibility metadata;
-- validate article length, claims, sources, media, and publication state;
-- render WeChat-ready inline HTML and Markdown;
-- create a deterministic 900×383 WeChat cover;
-- recheck volatile product states such as availability, pricing, regions, account tiers, and Preview or Stable status;
-- verify local previews at 375 px and 677 px;
-- require explicit authorization before saving a remote draft or publishing.
-
-The canonical article source is `signal.json`. Channel artifacts are rendered from it rather than edited independently. Supporting evidence and the complete fact ledger remain in `signal.json` and `source-notes.md`.
-
-By default, the workflow stops at a local review package:
+## How the skills fit together
 
 ```text
-signal.json
-source-notes.md
-wechat.html
-wechat.md
-wechat-cover.png
-images/
-release.json
+wx-mp-hunter  →  expert-wx-mp  →  published-track  →  content-calibrator
+ (sourcing)      (production)      (publication log)     (DNA evaluation)
+                                                              │
+                                              DNA revisions ←─┘
 ```
+
+`xhs-cover-generator` is independent and can be used on its own for Xiaohongshu visuals.
+
+## expert-wx-mp
+
+End-to-end WeChat Official Account operations, driven by workflows in `workflows/`:
+
+- `style-dna` — build and update content DNA from samples and benchmarks;
+- `content-production` — draft articles and image posts from ideas, references, or existing drafts;
+- `account-setup` — positioning, content pillars, and diagnosis of existing accounts;
+- `account-benchmark` — competitor account and article analysis against a DNA;
+- `editing` — revision, polishing, tone and layout changes;
+- `review` — WeChat-specific data review and DNA evaluation.
+
+Nested tools under `tools/` handle discrete jobs: `wechat-style-profiler` (17-dimension style DNA reports), `generate-wenyan-theme` (layout CSS themes), `wx-mp-publisher` (Markdown to draft box), and `wx-mp-engagement` (creator dashboard metrics).
+
+## wx-mp-hunter
+
+Three collection modes, none of which require a logged-in session:
+
+- `fetch <url>` — full article text from an `mp.weixin.qq.com` link;
+- `posts-list` — recent posts for given accounts over a time window;
+- `homepage <url>` — article links from a topic, homepage, or album page.
+
+Video Accounts, comments, and engagement metrics are out of scope.
+
+## published-track
+
+A single SQLite database at `./db/published_track.db`, with one table per platform (WeChat Official Account, Video Accounts, Zhihu, Bilibili, Douyin, Kuaishou, Xiaohongshu, Twitter/X, and more). Each record carries the source folder, publish URL and date, distribution status, per-platform engagement metrics, and the DNA attribution fields (`dna_id`, `account`, `perf_evaluated`) consumed by `content-calibrator`.
+
+## content-calibrator
+
+Evaluates whether a content DNA is working, on four rules: trends over absolute values, scripts supply evidence rather than conclusions, confounders are ruled out before attribution, and DNA updates require item-by-item user confirmation. Evaluation triggers by volume (at least five mature, unevaluated records per platform and DNA) or manually via `--force`. Platform-specific attribution methods come from each platform expert's review workflow, not from this skill.
+
+## xhs-cover-generator
+
+`xhs-cover-generator` renders covers and carousels locally with HTML/CSS and a local Chrome, Chromium, or Edge install:
+
+- six built-in cover templates addressed by stable keys (`thinking`, `dialog`, `emotion`, `quote`, `note`, `list`);
+- four color themes that can be swapped without changing the layout;
+- custom templates supplied as JSON;
+- multi-page 图文 decks generated from a single JSON file, including the nine-page `deck-xhs-post` example;
+- a local editor for interactive iteration.
+
+See [`xhs-cover-generator/README.md`](./xhs-cover-generator/README.md) for the template gallery, CLI reference, JSON schema, and editor usage.
 
 ## Repository structure
 
 ```text
 skills/
 ├── README.md
-├── frontier-signals/
-│   ├── SKILL.md       # Editorial workflow, rules, and release gates
-│   ├── agents/        # Agent-facing metadata
-│   ├── assets/        # Brand assets, templates, and structural examples
-│   ├── references/    # Research, writing, visual, and WeChat release guidance
-│   ├── scripts/       # Validators and deterministic renderers
-│   └── tests/         # Validation, rendering, and cover regression tests
+├── content-calibrator/
+│   ├── SKILL.md                 # Evaluation rules, triggers, and report structure
+│   ├── content-calibrator.sh    # Top-level wrapper
+│   └── scripts/                 # Aggregation, baseline, and trend computation
+├── expert-wx-mp/
+│   ├── SKILL.md                 # Operations entry point and tool index
+│   ├── workflows/               # Style DNA, production, setup, benchmark, editing, review
+│   └── tools/                   # Nested profiler, theme, publisher, and engagement tools
+├── published-track/
+│   ├── SKILL.md                 # Schema, platform tables, and usage
+│   ├── published-track.sh       # Top-level wrapper
+│   ├── references/              # Platform constraints
+│   └── scripts/                 # Record, metrics, query, and migration scripts
+├── wx-mp-hunter/
+│   ├── SKILL.md                 # Collection workflows and agent constraints
+│   ├── wx-mp-hunter.sh          # Top-level wrapper
+│   └── scripts/                 # Fetch, posts-list, and homepage collection
 └── xhs-cover-generator/
-    ├── SKILL.md       # Xiaohongshu cover and 图文 deck instructions
-    ├── README.md      # Template gallery and CLI usage
-    ├── agents/        # Agent-facing metadata
-    ├── assets/        # Templates, deck examples, and preview images
-    ├── references/    # Copywriting, design, and deck schema guidance
-    └── scripts/       # Deterministic HTML/CSS renderers
+    ├── SKILL.md                 # Xiaohongshu cover and 图文 deck instructions
+    ├── README.md                # Template gallery and CLI usage
+    ├── agents/                  # Agent-facing metadata
+    ├── assets/                  # Templates, deck examples, and preview images
+    ├── references/              # Copywriting, design, and deck schema guidance
+    └── scripts/                 # Deterministic HTML/CSS renderers
 ```
 
 ## Installation
@@ -74,53 +111,67 @@ cd skills
 Copy or link the skill directory you want into the skills directory used by your Codex environment:
 
 ```bash
-ln -s /path/to/skills/frontier-signals /path/to/codex-home/skills/frontier-signals
+ln -s /path/to/skills/expert-wx-mp /path/to/codex-home/skills/expert-wx-mp
 ln -s /path/to/skills/xhs-cover-generator /path/to/codex-home/skills/xhs-cover-generator
 ```
 
 Read the selected skill's `SKILL.md` before use. Files under `assets/` are templates, previews, and structural fixtures, not current production data.
 
+### Requirements
+
+| Skill | Requires |
+| --- | --- |
+| `expert-wx-mp` | Python 3, Node.js, an authorized WeChat Official Account session for publishing and engagement scraping |
+| `wx-mp-hunter` | Python 3; `posts-list` additionally needs a local WeChat client container |
+| `published-track` | Bash, SQLite 3 |
+| `content-calibrator` | Bash, SQLite 3, Python 3 |
+| `xhs-cover-generator` | Node.js and a local Chrome, Chromium, or Edge install; no npm dependencies |
+
 ## Usage
 
-From the `frontier-signals` directory:
+Collect a source article and the recent posts of an account:
 
 ```bash
-python3 scripts/validate_signal.py /path/to/signal.json
-
-python3 scripts/render_wechat.py \
-  /path/to/signal.json \
-  --html /path/to/wechat.html \
-  --markdown /path/to/wechat.md
-
-python3 scripts/render_cover.py \
-  /path/to/signal.json \
-  --output /path/to/wechat-cover.png
-
-python3 scripts/validate_signal.py \
-  /path/to/signal.json \
-  --require-media
+wx-mp-hunter fetch https://mp.weixin.qq.com/s/xxxx
+wx-mp-hunter posts-list --recent 20 --accounts 某公众号
 ```
 
-Python 3 is required. Cover rendering and cover tests require Pillow.
-
-For Xiaohongshu covers and 图文 decks, see [`xhs-cover-generator/README.md`](./xhs-cover-generator/README.md) for the CLI, template gallery, JSON schema, and local editor.
-
-## Validation
-
-Validate the Skill package and run the regression suite before opening a pull request:
+Record a publication and inspect the ledger:
 
 ```bash
-python3 /path/to/skill-creator/scripts/quick_validate.py frontier-signals
-python3 -m unittest discover -s frontier-signals/tests -p 'test_*.py' -v
+published-track init-db
+
+published-track record \
+  --platform wx_mp \
+  --title "标题" \
+  --content-type article \
+  --source-folder "wx_mp/outputs/xxx" \
+  --publish-url "https://mp.weixin.qq.com/s/xxx" \
+  --account <account-alias>
+
+published-track query-pending --platform wx_mp
 ```
 
-For strict article validation:
+Check whether a platform has enough mature records to evaluate, then run the evaluation:
 
 ```bash
-python3 frontier-signals/scripts/validate_signal.py \
-  /path/to/signal.json \
-  --strict \
-  --require-media
+content-calibrator eval --platform wx_mp --check
+content-calibrator eval --platform wx_mp
+```
+
+Render a Xiaohongshu cover from the `xhs-cover-generator` directory:
+
+```bash
+node scripts/make-cover.mjs --list
+
+node scripts/make-cover.mjs \
+  --template thinking \
+  --theme braun \
+  --main "5个AI工具\n让工作效率翻倍" \
+  --highlight "AI工具" \
+  --tag "实测有效" \
+  --emoji "⚡" \
+  --out out/cover.png
 ```
 
 ## Development standards
@@ -129,9 +180,9 @@ python3 frontier-signals/scripts/validate_signal.py \
 - Keep deterministic validation and rendering logic in scripts.
 - Document editorial rules, external services, permissions, and failure behavior in `references/`.
 - Treat example inputs as structural fixtures, never as current production facts.
-- Preserve the separation between internal research records and public copy.
-- Do not bypass validation or publication approval gates.
-- Do not commit credentials, authentication state, generated working files, operating-system metadata, or private user data.
+- Keep platform-specific attribution inside the relevant platform expert, not inside shared engines.
+- Do not bypass validation, DNA confirmation, or publication approval gates.
+- Do not commit credentials, authentication state, databases, generated working files, operating-system metadata, or private user data.
 
 ## Contributing
 
@@ -145,4 +196,4 @@ Issues and pull requests are welcome. Contributions should include:
 
 ## Security
 
-Never commit API keys, access tokens, browser sessions, private documents, or production data. Remote draft creation and publication require an explicitly authorized account session and an approved article version. If a credential is exposed, revoke it immediately and report the incident through the repository’s security channel rather than a public issue.
+Never commit API keys, access tokens, browser sessions, account configuration with real credentials, publication databases, private documents, or production data. `accounts.example.json` and similar files are templates; keep real account configuration outside the repository. Publishing and engagement scraping require an explicitly authorized account session. If a credential is exposed, revoke it immediately and report the incident through the repository’s security channel rather than a public issue.

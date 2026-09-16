@@ -1,4 +1,0 @@
-interface:
-  display_name: "Frontier Signals"
-  short_description: "研究、复核并安全发布 Frontier Signals 稿件"
-  default_prompt: "Use $frontier-signals to select and verify one sourced topic, run the required dbs review gates and $humanizer-zh edit, then render the approved WeChat and web packages."
